@@ -43,6 +43,8 @@ def ffmpeg_joiner(videos_to_join, out_file_name):
     
     ffOutput = ffInput.output(outFile.as_posix(), **params)
 
+    #ffOutput = ffOutput.global_args('-loglevel', 'error')
+
     ffOutput.run(overwrite_output=True)
 
     os.remove(input_files_path)

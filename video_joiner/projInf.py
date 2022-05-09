@@ -76,6 +76,9 @@ def ffmpeg_joiner(videos_to_join, out_file_name):
     # input stream -> output stream with output filename and expanded params
     ffOutput = ffInput.output(outFile.as_posix(), **params)
 
+    # make ffmpeg quiet
+    #ffOutput = ffOutput.global_args('-loglevel', 'error')
+
     # something, something, run.
     ffOutput.run(overwrite_output=True)
 
@@ -83,55 +86,107 @@ def ffmpeg_joiner(videos_to_join, out_file_name):
     os.remove(input_files_path)
 
 
-def join_videos_by_day():
-    subfolders = [f.path for f in os.scandir("F:\\record") if f.is_dir()]
+#Como funcionam as diretorias:
+#Dentro do disco temos 2 pastas, apenas nos interessa a pasta "record"
+#Dentro da pasta "record", temos os vídeos separados pelo dia que foram gravados
+#Dentro de uma das pastas do dia da gravação, encontramos os vídeos separados pela hora da gravação
+
+#Função que vai organizar e juntar os vídeos por dia
+def join_videos_by_day(folder_path):
+    #Procura na pasta "record" pelas subpastas dos dias de gravação
+    subfolders = [f.path for f in os.scandir(folder_path+"record\\") if f.is_dir()]
+
+    #Vai percorrer cada um desses dias
     for subfolder in subfolders:
+
+        #Procura todas as subpastas
         all_folders = get_all_dirs(subfolder)
+
+        #Procura todos os ficheiros .mp4 dessa pasta e das suas subpastas
         all_files_in_folders = get_all_mp4_files_in_dirs(all_folders)
+
+        #Algoritmo para dar o nome ao vídeo final, neste caso vai ser "Vido_dia_DIA-MÊS-ANO"
         video_name = subfolder.split("\\")[-1]
         video_name = video_name[-2:] +"-"+ video_name[4:6] +"-"+ video_name[:-4]
+
+        #Chamda da função que vai juntar os vídeos encontrados, recebe como parametros a lista de vídeos e o nome do vídeo final
         ffmpeg_joiner(all_files_in_folders, "Video_dia_"+video_name)
 
 
-def join_videos_by_hour():
-    subfolders = [f.path for f in os.scandir("F:\\record") if f.is_dir()]
+def join_videos_by_hour(folder_path):
+    #Procura na pasta "record" pelas subpastas dos dias de gravação
+    subfolders = [f.path for f in os.scandir(folder_path+"record\\") if f.is_dir()]
+
+    #Vai percorrer cada um desses dias
     for subfolder in subfolders:
-        hour=[f.path for f in os.scandir(subfolder) if f.is_dir()]
-        for i in hour:
-                all_folders = get_all_dirs(i)
+
+        #Procura na pasta do dia pelas subpastas das horas de gravação
+        hours=[f.path for f in os.scandir(subfolder) if f.is_dir()]
+
+        #Percorre cada uma dessas horas
+        for hour in hours:
+
+                #Procura todas as subpastas
+                all_folders = get_all_dirs(hour)
+
+                #Procura todos os ficheiros .mp4 dessa pasta e das suas subpastas
                 all_files_in_folders = get_all_mp4_files_in_dirs(all_folders)
-                video_day = i.split("\\")[-2]
+
+                #Algoritmo para dar o nome ao vídeo final, neste caso vai ser "Vido_dia_DIA-MÊS-ANO_HORAH"
+                video_day = hour.split("\\")[-2]
                 video_day = video_day[-2:] +"-"+ video_day[4:6] +"-"+ video_day[:-4]
-                video_name="Video_dia_"+video_day+"_"+i.split("\\")[-1]+"H"
-                print(video_name)
+                video_name="Video_dia_"+video_day+"_"+hour.split("\\")[-1]+"H"
+
+                #Chamda da função que vai juntar os vídeos encontrados, recebe como parametros a lista de vídeos e o nome do vídeo final
                 ffmpeg_joiner(all_files_in_folders, video_name)
 
 
 def main(argv):
+
+    #Definir quais os argumentos vão existir no Script
     try:
-        opts, args = getopt.getopt(argv,"hp:di",["help","path=","day","ihour"])
+        opts, args = getopt.getopt(argv,"hp:dt",["help","path=","day","thour"])
+
+    #Caso o argumento não seja nenhum dos argumentos possíveis
     except getopt.GetoptError:
         print('\nInvalid argument!\nUse -h to see the possible arguments to insert.\n')
         sys.exit(0)
+
+    #Caso não sejam passados argumentos, apresenta mensagem de erro
     if not opts:
         print('\nNo argument passed!\nUse -h to see the possible arguments to insert.\nShutting down...\n')
         sys.exit(0)
+    
+    #Tratamento dos argumentos
     for opt, arg in opts:
+
+        #Caso o argumento seja o -h(--help)
         if opt in ("-h", "--help"):
             print('\n-- Video Joiner --')
-            print('Arguments accepted by the Script:')
-            print('--path (-p) <PATH>: The path to search the videos.')
+            print('Arguments accepted by the Script:\n')
             print('--help (-h): To see the available arguments.\n')
-            sys.exit(0)
-        elif opt in ("-p", "--path"):
-            folder_path = arg
-        elif opt in ("-d", "--day"):
-            join_videos_by_day()
-            sys.exit(0)
-        elif opt in ("-i", "--ihour"):
-            join_videos_by_hour()
+            print('--path (-p) <PATH>: The path to search the videos.\n')
+            print('--day (-d): To join videos by day.\n')
+            print('--thour (-t): To join videos by hour.\n')
             sys.exit(0)
 
+        #Caso o argumento seja o -p(--path)
+        elif opt in ("-p", "--path"):
+            folder_path = arg
+
+        #Caso o argumento seja o -d(--day)
+        elif opt in ("-d", "--day"):
+            join_videos_by_day(folder_path)
+            sys.exit(0)
+
+        #Caso o argumento seja o -t(--thour)
+        elif opt in ("-t", "--thour"):
+            join_videos_by_hour(folder_path)
+            sys.exit(0)
+
+    #Caso não seja inserido nenhum dos argumentos para juntar os vídeos ou
+    #por hora ou por dia, o Script irá juntar todos os vídeos em apenas um 
+    #vídeo só
 
     #Executar as funções para obter todos os ficheiros .mp4
     all_folders = get_all_dirs(folder_path)
@@ -141,6 +196,6 @@ def main(argv):
     ffmpeg_joiner(all_files_in_folders, "All_Videos")
 
 
-
+#Chamada da função main passando os argumentos
 if __name__ == "__main__":
    main(sys.argv[1:])
